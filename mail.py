@@ -16,7 +16,8 @@ class MailCheckerApp:
         self.input_frame = tk.Frame(root)
         self.input_frame.pack(fill=tk.X, pady=(0, 10))
 
-        self.lbl_format = tk.Label(self.input_frame, text="Account Data (gmail:password:apppassword:2fa):", font=("Arial", 10, "bold"))
+        # FORMAT BURADA GÜNCELLENDİ
+        self.lbl_format = tk.Label(self.input_frame, text="Account Data (mail:password:2fa:apppassword):", font=("Arial", 10, "bold"))
         self.lbl_format.pack(anchor=tk.W)
 
         self.entry_account = tk.Entry(self.input_frame, width=80, font=("Arial", 10))
@@ -42,29 +43,26 @@ class MailCheckerApp:
 
         parts = account_data.split(':')
         if len(parts) != 4:
-            messagebox.showerror("Format Error", "Invalid format! Must be: gmail:password:apppassword:2fa")
+            # HATA MESAJI GÜNCELLENDİ
+            messagebox.showerror("Format Error", "Invalid format! Must be: mail:password:2fa:apppassword")
             return
 
-        # Disable button and update status while fetching
         self.btn_check.config(state=tk.DISABLED)
         self.lbl_status.config(text="Connecting to IMAP and fetching mails...", fg="blue")
         self.text_result.delete(1.0, tk.END)
 
-        # Extract only the needed parts: Email (Index 0) and App Password (Index 2)
+        # INDEXLER GÜNCELLENDİ: Email (Index 0) ve App Password (Index 3)
         user_email = parts[0]
-        app_password = parts[2]
+        app_password = parts[3]
 
-        # Run in a separate thread so the GUI doesn't freeze
         threading.Thread(target=self.fetch_mails, args=(user_email, app_password), daemon=True).start()
 
     def fetch_mails(self, email_addr, app_pass):
         try:
-            # Connect to Gmail's IMAP server
             mail = imaplib.IMAP4_SSL("imap.gmail.com")
             mail.login(email_addr, app_pass)
             mail.select("inbox")
 
-            # Search for all emails
             status, messages = mail.search(None, "ALL")
             mail_ids = messages[0].split()
 
@@ -72,9 +70,8 @@ class MailCheckerApp:
                 self.update_gui("No emails found in the inbox.", "green", done=True)
                 return
 
-            # Get the last 5 emails (to prevent massive text dumps)
             latest_email_ids = mail_ids[-5:]
-            latest_email_ids.reverse() # Show newest first
+            latest_email_ids.reverse()
 
             result_text = ""
             for i, email_id in enumerate(latest_email_ids):
@@ -83,12 +80,10 @@ class MailCheckerApp:
                     if isinstance(response_part, tuple):
                         msg = email.message_from_bytes(response_part[1])
 
-                        # Decode Subject
                         subject, encoding = decode_header(msg["Subject"])[0]
                         if isinstance(subject, bytes):
                             subject = subject.decode(encoding if encoding else "utf-8", errors="ignore")
 
-                        # Get Body
                         body = ""
                         if msg.is_multipart():
                             for part in msg.walk():
@@ -100,7 +95,7 @@ class MailCheckerApp:
                                         body = part.get_payload(decode=True).decode()
                                     except:
                                         pass
-                                    break # Get only the first plain text part
+                                    break 
                         else:
                             try:
                                 body = msg.get_payload(decode=True).decode()
@@ -121,7 +116,6 @@ class MailCheckerApp:
             self.update_gui(f"An error occurred: {str(e)}", "red", done=True)
 
     def update_gui(self, text, status_color, done=False):
-        # Update text area and status label safely from the thread
         self.root.after(0, self._safe_update_gui, text, status_color, done)
 
     def _safe_update_gui(self, text, status_color, done):
